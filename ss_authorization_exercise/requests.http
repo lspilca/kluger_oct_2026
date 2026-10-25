@@ -1,0 +1,132 @@
+### Spring Security authorization exercise - manual requests (IntelliJ HTTP Client)
+# Start the application first (./mvnw spring-boot:run). All demo passwords are "password".
+# "Expected after the exercise" notes describe the target behaviour once the TODOs are done.
+# In the starter state every request below succeeds (2xx), which is exactly the problem.
+
+@host = http://localhost:8080
+
+### 1. Products - anonymous (expected after the exercise: 200)
+GET {{host}}/api/products
+
+### 2a. Report - anonymous (expected after the exercise: 401)
+GET {{host}}/api/admin/reports
+
+### 2b. Report - alice / CUSTOMER (expected after the exercise: 403)
+GET {{host}}/api/admin/reports
+Authorization: Basic alice password
+
+### 2c. Report - manager / MANAGER (expected after the exercise: 403)
+GET {{host}}/api/admin/reports
+Authorization: Basic manager password
+
+### 2d. Report - admin / ADMIN (expected after the exercise: 200)
+GET {{host}}/api/admin/reports
+Authorization: Basic admin password
+
+### 3a. Create order - anonymous (starter: owner "guest"; expected after the exercise: 401)
+POST {{host}}/api/orders
+Content-Type: application/json
+
+{"productId": 1, "quantity": 1}
+
+### 3b. Create order - alice (expected: 201, ownerUsername "alice")
+# The ownerUsername field is ignored: the owner always comes from the authenticated user.
+POST {{host}}/api/orders
+Authorization: Basic alice password
+Content-Type: application/json
+
+{"productId": 2, "quantity": 2, "ownerUsername": "bob"}
+
+### 3c. Create order - invalid data (expected: 400)
+POST {{host}}/api/orders
+Authorization: Basic alice password
+Content-Type: application/json
+
+{"productId": 99, "quantity": 0}
+
+### 4a. Read order 101 - alice, the owner (expected after the exercise: 200)
+GET {{host}}/api/orders/101
+Authorization: Basic alice password
+
+### 4b. Read order 101 - bob, not the owner (expected after the exercise: 403)
+GET {{host}}/api/orders/101
+Authorization: Basic bob password
+
+### 4c. Read order 101 - admin (expected after the exercise: 200)
+GET {{host}}/api/orders/101
+Authorization: Basic admin password
+
+### 4d. Read order 101 - anonymous (expected after the exercise: 401)
+GET {{host}}/api/orders/101
+
+### 4e. Read a missing order - admin (expected: 404)
+GET {{host}}/api/orders/999
+Authorization: Basic admin password
+
+### 5a. Cancel order 102 - bob / CUSTOMER, the owner (expected after the exercise: 403)
+DELETE {{host}}/api/orders/102
+Authorization: Basic bob password
+
+### 5b. Cancel order 102 - manager (expected after the exercise: 204)
+DELETE {{host}}/api/orders/102
+Authorization: Basic manager password
+
+### 5c. Cancel order 103 - admin (expected after the exercise: 204)
+DELETE {{host}}/api/orders/103
+Authorization: Basic admin password
+
+### 6a. Refund order 101 - refund-agent / ORDER_REFUND (expected after the exercise: 204)
+# Supporting endpoint (not part of the original exercise spec).
+POST {{host}}/api/orders/101/refund
+Authorization: Basic refund-agent password
+
+### 6b. Refund order 101 - admin, who has no ORDER_REFUND (expected after the exercise: 403)
+POST {{host}}/api/orders/101/refund
+Authorization: Basic admin password
+
+### 6c. Refund order 101 - alice, the owner (expected after the exercise: 403)
+POST {{host}}/api/orders/101/refund
+Authorization: Basic alice password
+
+### 7a. [Bonus] Status PROCESSING - manager (expected after the bonus: 204)
+# Supporting endpoint (not part of the original exercise spec).
+PATCH {{host}}/api/orders/101/status
+Authorization: Basic manager password
+Content-Type: application/json
+
+{"status": "PROCESSING"}
+
+### 7b. [Bonus] Status SHIPPED - manager (expected after the bonus: 204)
+PATCH {{host}}/api/orders/101/status
+Authorization: Basic manager password
+Content-Type: application/json
+
+{"status": "SHIPPED"}
+
+### 7c. [Bonus] Status CANCELLED - manager (expected after the bonus: 403)
+PATCH {{host}}/api/orders/101/status
+Authorization: Basic manager password
+Content-Type: application/json
+
+{"status": "CANCELLED"}
+
+### 7d. [Bonus] Status CANCELLED - admin (expected after the bonus: 204)
+PATCH {{host}}/api/orders/101/status
+Authorization: Basic admin password
+Content-Type: application/json
+
+{"status": "CANCELLED"}
+
+### 7e. [Bonus] Status SHIPPED - alice / CUSTOMER (expected after the bonus: 403)
+PATCH {{host}}/api/orders/101/status
+Authorization: Basic alice password
+Content-Type: application/json
+
+{"status": "SHIPPED"}
+
+### 7f. [Bonus] Unknown status - admin (starter: 400; after the bonus, the outcome depends on your rule)
+PATCH {{host}}/api/orders/101/status
+Authorization: Basic admin password
+Content-Type: application/json
+
+{"status": "LOST"}
