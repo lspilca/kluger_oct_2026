@@ -6,6 +6,7 @@ import com.example.ss_authorization_exercise.model.OrderStatus;
 import com.example.ss_authorization_exercise.model.Product;
 import com.example.ss_authorization_exercise.repository.OrderRepository;
 import com.example.ss_authorization_exercise.repository.ProductRepository;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -34,21 +35,25 @@ public class OrderService {
         return orderRepository.create(ownerUsername, productId, quantity);
     }
 
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public void cancelAnyOrder(Long orderId) {
         orderRepository.update(orderId, order -> order.withStatus(OrderStatus.CANCELLED))
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
     }
 
+    @PreAuthorize("hasAuthority('ORDER_REFUND')")
     public void refundOrder(Long orderId) {
         orderRepository.update(orderId, order -> order.withRefunded(true))
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
     }
 
+    @PreAuthorize("@orderSecurity.isOwner(#orderId) or hasRole('ADMIN')")
     public Order getOrder(Long orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
     }
 
+    @PreAuthorize("@orderSecurity.canUpdateStatus(#status)")
     public void updateOrderStatus(Long orderId, String status) {
         OrderStatus newStatus = parseStatus(status);
         orderRepository.update(orderId, order -> order.withStatus(newStatus))
