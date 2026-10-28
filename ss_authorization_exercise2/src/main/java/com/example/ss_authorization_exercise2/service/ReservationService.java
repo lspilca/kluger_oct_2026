@@ -5,6 +5,7 @@ import com.example.ss_authorization_exercise2.entity.ReservationStatus;
 import com.example.ss_authorization_exercise2.entity.Room;
 import com.example.ss_authorization_exercise2.repository.ReservationRepository;
 import com.example.ss_authorization_exercise2.repository.RoomRepository;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,7 @@ public class ReservationService {
     }
 
     @Transactional
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'ADMIN')")
     public void cancelAnyReservation(Long reservationId) {
         Reservation reservation = findReservation(reservationId);
         if (reservation.getStatus() == ReservationStatus.CANCELLED
@@ -57,6 +59,7 @@ public class ReservationService {
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('ROOM_APPROVE')")
     public void approveReservation(Long reservationId) {
         Reservation reservation = findReservation(reservationId);
         if (reservation.getStatus() != ReservationStatus.PENDING) {
@@ -67,11 +70,13 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
+    @PreAuthorize("@reservationSecurity.isOwner(#reservationId) or hasRole('ADMIN')")
     public Reservation getReservation(Long reservationId) {
         return findReservation(reservationId);
     }
 
     @Transactional
+    @PreAuthorize("@reservationSecurity.changeReservationStatusAllowed(#status)")
     public void changeReservationStatus(Long reservationId, String status) {
         ReservationStatus newStatus = parseStatus(status);
         Reservation reservation = findReservation(reservationId);
