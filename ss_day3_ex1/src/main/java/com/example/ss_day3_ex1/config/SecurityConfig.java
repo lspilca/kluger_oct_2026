@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -20,12 +21,15 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Configuration
@@ -71,16 +75,24 @@ public class SecurityConfig {
                 .clientId("client")
                 .clientSecret("secret")
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-//                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .redirectUri("http://localhost:4040/code")
                 .scope("OPENID")
-                .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofDays(1)).build())
+                .tokenSettings(TokenSettings.builder()
+                        .refreshTokenTimeToLive(Duration.ofDays(2))
+                        .accessTokenTimeToLive(Duration.ofDays(1)).build())
                 .clientSettings(ClientSettings.builder().requireProofKey(true).build())
                 .build();
 
-        return new InMemoryRegisteredClientRepository(c1);
+        RegisteredClient rs = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("resourceserver")
+                .clientSecret("resourceserversecret")
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .build();
+
+        return new InMemoryRegisteredClientRepository(c1, rs);
     }
 
     // users
@@ -92,7 +104,13 @@ public class SecurityConfig {
                 .authorities("read")
                 .build();
 
-        return new InMemoryUserDetailsManager(u1);
+        UserDetails u2 = User.builder()
+                .username("john")
+                .password("12345")
+                .authorities("read", "write")
+                .build();
+
+        return new InMemoryUserDetailsManager(u1, u2);
     }
 
 
@@ -100,5 +118,18 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();
+    }
+
+    @Bean
+    public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
+        return context -> {
+            var authorities = context.getPrincipal().getAuthorities()
+                                .stream()
+                                .map(GrantedAuthority::getAuthority)
+                                .toList();
+
+            context.getClaims().claim("authorities", authorities);
+            context.getClaims().claim("currentTime", LocalDateTime.now().toString());
+        };
     }
 }
