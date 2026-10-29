@@ -2,6 +2,7 @@ package com.example.ss_day3_ex2.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
@@ -9,6 +10,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtIss
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -36,7 +38,9 @@ public class SecurityConfig {
 //        );
 
         http.authorizeHttpRequests(a -> a
-//                .requestMatchers("/demo").hasAuthority("write")
+                .requestMatchers("/demo").permitAll()
+                .requestMatchers("/test").authenticated()
+                .requestMatchers("/hello").hasAuthority("read")
                 .anyRequest().authenticated());
 
         return http.build();

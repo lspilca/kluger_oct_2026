@@ -68,34 +68,6 @@ public class SecurityConfig {
         return AuthorizationServerSettings.builder().build();
     }
 
-    // client
-    @Bean
-    public RegisteredClientRepository registeredClientRepository() {
-        RegisteredClient c1 = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("client")
-                .clientSecret("secret")
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .redirectUri("http://localhost:4040/code")
-                .scope("OPENID")
-                .tokenSettings(TokenSettings.builder()
-                        .refreshTokenTimeToLive(Duration.ofDays(2))
-                        .accessTokenTimeToLive(Duration.ofDays(1)).build())
-                .clientSettings(ClientSettings.builder().requireProofKey(true).build())
-                .build();
-
-        RegisteredClient rs = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("resourceserver")
-                .clientSecret("resourceserversecret")
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .build();
-
-        return new InMemoryRegisteredClientRepository(c1, rs);
-    }
-
-    // password encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();
